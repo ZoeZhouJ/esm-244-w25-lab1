@@ -1,6 +1,9 @@
 ---
-title: "Template"
-format: html
+title: "Lab 1 workup"
+format: 
+  html:
+    code-fold: true
+    toc: true
 execute:
   eval: false
 ---
@@ -20,7 +23,7 @@ library(tmap)
 What do we need to change to get the data to load in the following chunk?
 
 ```{r}
-sfo_trees_df<-read_csv(here("data","trees")) |> janitor::clean_names()
+sfo_trees_df<-read_csv(here("data","sfo_trees","sfo_trees.csv")) |> janitor::clean_names()
 ```
 
 ## Part 1: Data exploration
