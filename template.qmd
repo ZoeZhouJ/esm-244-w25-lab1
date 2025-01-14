@@ -23,7 +23,7 @@ library(tmap)
 What do we need to change to get the data to load in the following chunk?
 
 ```{r}
-sfo_trees_df<-read_csv(here("data","sfo_trees","sfo_trees.csv")) |> janitor::clean_names()
+sfo_trees_df<-read_csv(here("data","sfo_trees","sfo_trees.csv")) |> janitor::clean_names() 
 ```
 
 ## Part 1: Data exploration
@@ -34,28 +34,61 @@ What are some interesting questions you could ask about the data?
 
 Write them below:
 
+any correlation between legal status and species
+species dbh and species
 
+how many counts of each observation by legal_status? focus on the highest tree? 
+```{r}
+sfo_trees_df %>% 
+  group_by(legal_status) %>% 
+  summarize(tree_count = n()) %>% 
+  ungroup()
+```
+Make a graph of top 5 from 
+```{r}
+# try slice_max to select top five
+top_5_status <- sfo_trees_df %>% 
+  group_by(legal_status) %>% 
+  summarize(tree_count = n()) %>% 
+  ungroup() %>% 
+  slice_max(tree_count, n=5) %>% 
+  arrange(-tree_count)
+top_5_status
+```
+Make a graph of top 5 from above
+```{r}
+ggplot(data=top_5_status,
+       aes(x=legal_status,
+           y=tree_count)) +
+  geom_col() +
+  labs(y="Tree count", x="Legal Status")+
+  theme_minimal()
 
-
-
-
-
-
+```
 
 ### Example 2
 
 Describe what this piece of code does. Feel free to run it to help you understand
 
+**answer**: Only keep observations where legal status is Permitted Site and caretaker is MTA or DPW. Store as permitted_mta_dpw.
+
 ```{r}
-permitted_mta_dpw<-sfo_trees_df |> 
-  filter(legal_status == 'Permitted Site' & %in% c("MTA","DPW"))
+unique(sfo_trees_df$legal_status)
+permitted_mta_dpw<-sfo_trees_df %>%  
+  filter(legal_status == 'Permitted Site' & caretaker %in% c("MTA","DPW"))
+permitted_mta_dpw
 ```
 
 
 What does the `%in%` do? Write an example to explain the `%in%` operator to your neighbor using the empty code chunk below
-
+**answer** `==` checks if elements is equal to all elements of another vector. `%in%` checks which element of list 1 is included in list 2
 ```{r}
-
+test1<-sfo_trees_df %>%  
+  filter(caretaker %in% c("MTA","DPW"))
+test2<-sfo_trees_df %>%  
+  filter(caretaker == c("MTA","DPW"))
+test1
+test2
 ```
 
 
@@ -65,20 +98,28 @@ Our boss tasked us with identifying oak and pine trees in SF based on legal stat
 
 Write pseudocode on how you would solve it
 
-
-
-
-
-
-
+1. select columns `legal status`, `longitude`,`latitude`, `planting date` and `species`. 
+2. filter `species` so that only oaks and pine are included
+3. summarize number of oak and pines by legal status
 
 Data wrangle done below:
 
-
 ```{r}
-
+oak_pine_df <-sfo_trees_df %>% 
+  filter(str_detect(species, "Oak")|str_detect(species, "Pine")) %>% 
+  select(species, legal_status, plant_date, latitude, longitude) %>% 
+  mutate(type=ifelse(str_detect(species, 'Oak'),'Oak','Pine'))
+oak_pine_df
 ```
-
+make a plot
+```{r}
+ggplot(data=oak_pine_df,
+       aes(x=longitude, y=latitude,color=type))+
+  geom_point()+
+  theme_minimal()+
+  labs(color='tree type',
+       caption = 'locatino of oaks and pines in SF')
+```
 
 Summary stats
 
@@ -86,6 +127,7 @@ Summary stats
 oak_pine_count<-oak_pine_df |> 
   group_by(legal_status,type)
   summarize(count=n())
+oak_pine_count
 ```
 
 
@@ -101,11 +143,22 @@ Plot the locations of the trees as a scatterplot
 ### Example 4
 
 Why have a list of native trees in the data folder.
-
+How can we compare the California native species to those in our SF trees data? 
+Add a column notes whether each tree is a CA native or not, and save as `sfo_trees_native` (include species info, legal status, plant date, and location). Then, count how many native vs. non-native trees for each legal status category, and save as `sfo_native_status`. Extension: include how many individual species in each category as well!
 ```{r}
-ca_native_df<-read_csv(here('data/sfo/ca_native_spp.csv'))
+ca_native_df<-read_csv(here('data/sfo_trees/ca_native_spp.csv'))
 
 # Why can I use this format instead of the usual here("data","folder","file")?
+
+sfo_trees_native <- sfo_trees_df %>% 
+  separate(species, into = c("spp_sci", "spp_common"), sep = " :: ") %>%
+  select(starts_with('spp'), 'plant_date', 'legal_status', 'longitude', 'latitude') %>%
+  mutate(ca_native = (spp_sci %in% ca_native_df$scientific_name))
+
+sfo_native_status <- sfo_trees_native %>%
+  group_by(legal_status, ca_native) %>%
+  summarize(n_trees = n(),
+            n_species = n_distinct(spp_sci))
 ```
 
 
